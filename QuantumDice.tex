@@ -1,0 +1,246 @@
+\documentclass[12pt]{amsart}
+\usepackage{geometry} % see geometry.pdf on how to lay out the page. There's lots.
+\usepackage{braket}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage[hidelinks]{hyperref}
+\usepackage{cleveref}
+\usepackage[most]{tcolorbox}
+\usepackage{listings}
+\usepackage{mathtools}
+\usepackage{pagecolor}
+\usetikzlibrary{quantikz}
+\geometry{a4paper} % or letter or a5paper or ... etc
+% \geometry{landscape} % rotated page geometry
+
+% See the ``Article customise'' template for come common customisations
+
+\title[Construction of an N-Sided Quantum Die]{Construction of an N-Sided Quantum Die Or Respectively a Quantum Random Number Generator}
+\author{Moritz Fink}
+\date{\today} % delete this line to display the current date
+
+%%% BEGIN DOCUMENT
+\begin{document}
+
+\pagecolor{white}
+
+\lstset{language=Python}
+
+\maketitle
+\tableofcontents
+
+\section{Introduction}
+The goal of this document is to define an algorithm that constructs a quantum circuit for an arbitrary number $n\in\mathbb{N}^{>1}$, so that the target state $\psi_{n}$ is
+\begin{equation}
+\psi_{n} = \frac{1}{\sqrt{n}} \sum_{i=0}^{n} \ket{s_{i}}
+\end{equation}
+This represents a state in which each possible outcome $\ket{s_{i}}$ is equally likely, i.e. an n-sided quantum die. Since $N$ qubits can represent $2^{N}$ states $\ket{s_{0}}...\ket{s_{2^{N}-1}}$, we will at least need $N=\log_{2}(n)$ qubits to construct this state.\\
+Furthermore, if $n \neq 2^{N}$ for all $N\in\mathbb{N}$, we define the desired quantum die to be an equal distribution of $n$ of the $2^{N}$ possible outcomes, i.e. $N$ satisfies $n<2^{N}$ and there exists a subset $S^{*} \subset S_{N}$ of all possible outcomes $S_{N} = \{\ket{s_{i}} | i=0...2^{N}-1\}$, so that 
+\begin{equation}
+\psi_{n} = \frac{1}{\sqrt{n}} \sum_{s_{i}\in S^{*}} \ket{s_{i}}
+\end{equation}
+Then, all (none-zero) outcomes $\ket{s} \in S^{*}$ have an equal probability of $\frac{1}{n}$.\footnote{Note, that all $\ket{s}\in S_{N}\setminus S^{*}$ have probabilities equal to zero.}
+
+\section{Trivial cases}
+First, we consider only the trivial cases $n=2$ (e.g. coin flip) and $n=3$. We will then show that all other cases can be constructed using those simple circuits.
+\subsection{n=2}
+The simplest case of a quantum die is a two-sided die, i.e. a coin flip. The desired target state is
+\begin{equation}
+\psi_{2} = \frac{1}{\sqrt{2}} \left( \ket{0}+\ket{1} \right)
+\end{equation}
+which gives equal probability for all outcomes $\ket{0}$ and $\ket{1}$:
+\begin{align}
+|\braket{0 | \psi_{2}}|^{2} &= |\frac{1}{\sqrt{2}} \braket{0|0}|^{2}  = \frac{1}{2} \\
+|\braket{1 | \psi_{2}}|^{2} &= |\frac{1}{\sqrt{2}} \braket{1|1}|^{2}  = \frac{1}{2}
+\end{align}
+$\psi_{2}$ is obviously the Hadamard state, so constructing a quantum circuit for $n=2$ is straightforward and uses one Hadamard gate on a single qubit (see \cref{fig:circuit2}).\\
+\begin{figure}[htbp]
+\centering
+\begin{tcolorbox}[halign=center]
+\begin{quantikz}
+\lstick{$\ket{0}$} & \gate{H} & \meter{}
+\end{quantikz}
+\end{tcolorbox}
+\caption{Quantum circuit of a two-sided quantum die using one Hadamard gate on a single qubit.}
+\label{fig:circuit2}
+\end{figure}
+We will refer to this circuit as
+\begin{quantikz}
+\lstick{$\ket{0}$} & \gate[style={fill=black},label style=white]{2} & \meter{}
+\end{quantikz}
+.
+
+\subsection{n=3\label{sec:n3}}
+For a three-sided quantum die, the target state is
+\begin{equation}
+\psi_{3} = \frac{1}{\sqrt{3}} \left( \ket{00}+\ket{01}+\ket{11} \right)
+\end{equation}
+Its construction starts by taking the state $\ket{00}$ to $\frac{1}{\sqrt{3}} \ket{00} + \frac{\sqrt{2}}{\sqrt{3}} \left( \ket{01}+\ket{11} \right)$ which is a single qubit operation $U$ on the first qubit\footnote{The first qubit is the rightmost qubit $q_{0}$ inside the Ket $\ket{q_{1}q_{0}}$ (with index $0$).}. We define
+\begin{equation}
+U = \left(
+\begin{matrix}
+\frac{1}{\sqrt{3}} & \frac{\sqrt{2}}{\sqrt{3}} \\
+\frac{\sqrt{2}}{\sqrt{3}} & -\frac{1}{\sqrt{3}} \\
+\end{matrix}
+\right)
+\end{equation}
+so that $U$ is unitary\footnote{$U^{\dagger}U=I$} and
+\begin{align}
+U\ket{0} &= \frac{1}{\sqrt{3}} \ket{0} +\frac{\sqrt{2}}{\sqrt{3}} \ket{1} \\
+\left(I \otimes U\right) \ket{00} &= \frac{1}{\sqrt{3}} \ket{00} +\frac{\sqrt{2}}{\sqrt{3}} \ket{01}
+\end{align}
+where $I$ is the canonical Identity matrix. The second and last step is to take the second qubit to the Hadamard state $\psi_{2}$ if the first qubit is $1$.\\
+In terms of a quantum circuit the two operations can be implemented by a $U3$ gate followed by a controlled Hadamard gate (see \cref{fig:circuit3}), where
+\begin{equation}
+U3 \coloneqq \left(
+\begin{matrix}
+\cos(\frac{\theta}{2}) & -e^{i\lambda}\sin(\frac{\theta}{2}) \\
+e^{i\Phi}\sin(\frac{\theta}{2}) & e^{i(\lambda+\Phi)}\cos(\frac{\theta}{2})  \\
+\end{matrix}
+\right) 
+\end{equation}
+with $\theta = 2\arccos(\frac{1}{\sqrt{3}})$, $\lambda = \pi$ and $\Phi = 0$.\\
+\begin{figure}[htbp]
+\centering
+\begin{tcolorbox}[halign=center]
+\begin{quantikz}
+\lstick{$\ket{0}$} & \gate{U3} & \octrl{1} & \meter{} \\
+\lstick{$\ket{0}$} & \qw & \gate{H} & \meter{}
+\end{quantikz}
+\end{tcolorbox}
+\caption{Quantum circuit of a three-sided quantum die using a $U3$ gate and a controlled Hadamard gate.}
+\label{fig:circuit3}
+\end{figure}
+We will refer to this circuit as
+\begin{quantikz}
+\lstick{$\ket{0}^{\otimes 2}$} & \gate[style={fill=black},label style=white]{3}\qwbundle[alternate]{} & \meter{}\qwbundle[alternate]{} 
+\end{quantikz}
+.
+
+\section{Non-trivial cases}
+Based on the results of the previous section, we can now build quantum dice with the number of sides being greater than three. Those can be recursively constructed by splitting the number of desired sides $n$ into its prime factors and combining the smaller $n_{prime}$-sided quantum die circuits.
+
+\subsection{Products}
+If $n = x y$ for $x,y\in\mathbb{N}^{>1}$, then 
+\begin{quantikz}
+\qwbundle[alternate]{} & \gate[style={fill=black},label style=white]{x}\qwbundle[alternate]{}  & \qwbundle[alternate]{} 
+\end{quantikz}
+and
+\begin{quantikz}
+\qwbundle[alternate]{} & \gate[style={fill=black},label style=white]{y}\qwbundle[alternate]{}  & \qwbundle[alternate]{} 
+\end{quantikz}
+can be combined in the way depicted in \cref{fig:product}. Basically, instead of 'throwing' one die, we just 'throw' several dice and combine the results.
+\begin{figure}[htbp]
+\centering
+\begin{tcolorbox}[halign=center]
+\begin{quantikz}
+\lstick{$\ket{0}^{\otimes}$} & \gate[style={fill=black},label style=white]{x} \qwbundle[alternate]{} & \meter{}\qwbundle[alternate]{} \\
+\lstick{$\ket{0}^{\otimes}$} & \gate[style={fill=black},label style=white]{y} \qwbundle[alternate]{} & \meter{}\qwbundle[alternate]{}
+\end{quantikz}
+\end{tcolorbox}
+\caption{Combined quantum die that forms the product $n = x y$.}
+\label{fig:product}
+\end{figure}
+In that way, a six-sided quantum die is a combination of a two-sided and a three-sided quantum die (see \cref{fig:circuit6}) with
+\begin{equation}
+\psi_{6} = \psi_{3} \otimes \psi_{2} = \frac{1}{\sqrt{6}} \left( \ket{000} + \ket{010} + \ket{110} + \ket{001} + \ket{011} + \ket{111} \right)
+\end{equation}
+\begin{figure}[htbp]
+\centering
+\begin{tcolorbox}[halign=center]
+\begin{quantikz}
+\lstick{$\ket{0}$} & \gate{H} & \qw & \meter{} \\
+\lstick{$\ket{0}$} & \gate{U3} & \octrl{1} & \meter{} \\
+\lstick{$\ket{0}$} & \qw & \gate{H} & \meter{}
+\end{quantikz}
+\end{tcolorbox}
+\caption{Quantum circuit of a six-sided quantum die using a two-sided and a three-sided quantum die.}
+\label{fig:circuit6}
+\end{figure}
+We can use this approach to build $n$-sided quantum dice, if the prime factorisation of $n$ is given.
+
+\subsection{Prime numbers}
+Since we can now build an $n$-sided quantum die using its prime factors, we recursively construct an $n_{prime}$-sided quantum die by combining the $(n_{prime}-1)$-sided quantum die with one additional control qubit $q_{c}$. Similar to the construction in \cref{sec:n3}, we first construct the state
+\begin{equation}
+\psi_{n_{prime}} = \psi_{n_{prime}-1} \otimes \frac{1}{\sqrt{n_{prime}}} \left( \ket{0} + \sqrt{n_{prime}-1} \ket{1} \right)
+\end{equation}
+The respective quantum circuit is depicted in \cref{fig:circuitPrime}, using a $U3$ gate with $\theta = 2\arccos(\frac{1}{\sqrt{n_{prime}}})$, $\lambda = \pi$ and $\Phi = 0$.\\
+\begin{figure}[htbp]
+\centering
+\begin{tcolorbox}[halign=center]
+\begin{quantikz}
+\lstick{$\ket{0}$} & \gate{U3} & \octrl{1} & \meter{} \\
+\lstick{$\ket{0}^{\otimes}$} & \qwbundle[alternate]{} & \gate[style={fill=black},label style=white]{n_{prime}-1}\qwbundle[alternate]{} & \meter{}\qwbundle[alternate]{}
+\end{quantikz}
+\end{tcolorbox}
+\caption{Quantum circuit decomposition of an $n_{prime}$-sided quantum die.}
+\label{fig:circuitPrime}
+\end{figure}
+Since $\psi_{n_{prime}-1}$ can be decomposed in terms of prime factors, we can repeat this recursion until the circuit is built only using
+\begin{quantikz}
+\qw & \gate[style={fill=black},label style=white]{2} & \qw
+\end{quantikz}
+. Note, that the circuit
+\begin{quantikz}
+\qwbundle[alternate]{}  & \gate[style={fill=black},label style=white]{3}\qwbundle[alternate]{}  & \qwbundle[alternate]{} 
+\end{quantikz}
+is just a special case of this construction. An example for a five-sided quantum die, constructed in this way, is given in \cref{fig:circuit5}.
+\begin{figure}[htbp]
+\centering
+\begin{tcolorbox}[halign=center]
+\begin{quantikz}
+\lstick{$\ket{0}$} & \gate{U3} & \octrl{1} & \octrl{2} & \meter{} \\
+\lstick{$\ket{0}$} & \qw & \gate[style={fill=black},label style=white]{2} & \qw & \meter{} \\
+\lstick{$\ket{0}$} & \qw & \qw & \gate[style={fill=black},label style=white]{2} & \meter{} \\
+\end{quantikz}
+\end{tcolorbox}
+\caption{Quantum circuit of a five-sided quantum die using the decomposition of a four-sided quantum die together with a control qubit.}
+\label{fig:circuit5}
+\end{figure}
+
+\section{The algorithm}
+Finally, we are able to write down the resulting algorithm for the construction of an $n$-sided quantum die:
+\begin{enumerate}
+\item Find the prime factorisation $T_{n}$ of $n$ (see Shor's Algorithm\footnote{\href{https://arxiv.org/abs/quant-ph/9508027}{https://arxiv.org/abs/quant-ph/9508027}}).
+\item If $T_{n}$ contains prime factors other than two, write those prime factors $n_{prime}$ as $(n_{prime}-1)+1$ and write $(n_{prime}-1)$ as product of its prime factors.
+\item Repeat the previous step until the resulting term $T_{n}$ only contains factors of two and addends of one.
+\item Construct the quantum circuit according to algebraic priority from smallest to largest terms:
+\begin{enumerate}
+\item For each factor of two, add
+\begin{quantikz}
+\lstick{$\ket{0}$} & \gate[style={fill=black},label style=white]{2} & \meter{}
+\end{quantikz}
+to the product's sub-circuit.
+\item For each sum $n_{prime}$, add a control qubit $q_{c}$ to the circuit, that passes a $U3$ gate with $\theta = 2\arccos(\frac{1}{\sqrt{n_{prime}}})$, $\lambda = \pi$ and $\Phi = 0$ before it controls\footnote{Apply all gates of the sub-circuit only if the control bit $q_{c}$ is $\ket{1}$.} the already constructed sub-circuit of the $n_{prime}-1$ addend (see \cref{fig:circuitPrime}).
+\end{enumerate}
+\end{enumerate}
+
+\subsection{Complexity}
+The complexity of the given algorithm heavily depends on the number of prime factors two and addends one in the decomposition of the number of outcomes $n$. This decomposition can be found by applying Shor's Algorithm as many times as needed. In general, it is hard to tell how much factors and addends the desired decomposition of a given $n$ has. In the worst case, $n$ is a prime number with $n-1$ being a product of $2$ and another prime number which in turn is again a product of $2$ and another prime number and so on. This number $n$ would be decomposed into $\log_{2}n$ factors of two and addends of one each.\\
+For each factor of two, the algorithm requires one additional qubit and one additional gate (Hadamard). For each addend of one, we need a dedicated control qubit which controls the already added gates of the controlled sub-circuit and one additional gate ($U3$).\\
+All in all, if $n$ can be decomposed into $n_{\times2}$ factors of two and $n_{+1}$ addends of one, then the quantum circuit requires in total $N = n_{\times2} + n_{+1}$ qubits and $N_{gates} = n_{\times2} + n_{+1} = N$ gates.
+
+\subsection{Pseudocode}
+The following pseudocode describes the given algorithm:
+\begin{lstlisting}[frame=single] 
+def buildCircuit(n, control_qubits[]):
+  if n==2:
+    add qubit with Hadamard gate which is controlled by all qubits in control_qubits
+  else:
+    prime_factors = find_prime_factors(n)
+    for(prime_factor in prime_factors):
+      add control qubit q_c with U3 gate
+      control_qubits.append(q_c)
+      buildCircuit(n-1, control_qubits)
+\end{lstlisting}
+
+\section{Implementation on a quantum computer}
+
+\subsection{Qiskit code}
+
+\subsection{Results}
+
+\section{Conclusion}
+
+\end{document}
